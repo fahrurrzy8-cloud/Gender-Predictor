@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Gender Predictor</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: url('https://images.unsplash.com/photo-1511895426328-dc8714191300?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') center/cover no-repeat;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+
+        #container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            z-index: 2;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        #loginForm {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        input {
+            padding: 15px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        input[readonly] {
+            cursor: not-allowed;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        #submit {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        #submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        #submit:active {
+            transform: translateY(0);
+        }
+
+        #submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: white;
+            font-weight: 500;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 480px) {
+            #container {
+                margin: 20px;
+                padding: 30px;
+            }
+            
+            h2 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h2>Predict Your Gender</h2>
+        <form id="loginForm" novalidate>
+            <input type="text" id="firstInput" placeholder="What's Your Name">
+            <input type="number" id="secondInput" placeholder="Input Your Age">
+            <input type="text" id="resultInput" placeholder="Your Gender Will Show Here" readonly>
+            <button type="submit" id="submit">Predict Now</button>
+        </form>
+    </div>
+
+    <script>
+        // ==========================================
+        // AREA UNTUK KUSTOMISASI TEKS & DURASI
+        // ==========================================
+        
+        // 1. DURASI LOADING (dalam detik) - Ubah angka sesuai keinginan
+        const LOADING_DURATION = 15;
+        
+        // 2. Teks loading yang akan ditampilkan setiap detik (ganti sesuai keinginan)
+        const loadingMessages = [
+            "Analyzing Your Answer...",
+            "Consulting the mystical orb...",
+            "Asking For Horoscope...",
+            "Hacking Nasa Config...",
+            "Checkiing For Remaining Balance...",
+            "Fuck you...",
+            "Get A Life You Weirdo...",
+            "Hacking Callendar...",
+            "Then What Is This...",
+            "Checking System 32...",
+            "Initialize System Delleting...",
+            "Delleting System 32...",
+            "Its Prank haha...",
+            "Its Almost Done...",
+            "Here Is your Gender..."
+        ];
+        
+        // 3. Daftar hasil prediksi yang akan muncul secara random (ganti sesuai keinginan)
+        const predictionResults = [
+            "Lanang",
+            "Platypus",
+            "Not Recognized",
+            "Relative",
+            "Hello World!",
+            "Install Manually",
+            "Female",
+            "Black",
+            "Java Java java",
+            "Not A number"
+        ];
+        
+        // ==========================================
+        // JANGAN UBAH KODE DI BAWAH INI
+        // ==========================================
+        
+        const form = document.getElementById('loginForm');
+        const firstInput = document.getElementById('firstInput');
+        const secondInput = document.getElementById('secondInput');
+        const resultInput = document.getElementById('resultInput');
+        const submitBtn = document.getElementById('submit');
+
+        // Function to get random item from array
+        function getRandomItem(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        // Function to show loading with sequential messages
+        function showLoadingSequence() {
+            let currentIndex = 0;
+            let secondsPassed = 0;
+            
+            // Show initial loading message
+            resultInput.value = loadingMessages[0] || "🔮 Loading...";
+            resultInput.style.color = 'rgba(255, 0, 0, 0.8)';
+            
+            // Add spinner animation to the input
+            resultInput.style.background = 'rgba(255, 255, 255, 0.15)';
+            resultInput.style.backgroundImage = `
+                linear-gradient(45deg, transparent 40%, rgba(255, 215, 0, 0.1) 50%, transparent 60%),
+                linear-gradient(-45deg, transparent 40%, rgba(255, 215, 0, 0.1) 50%, transparent 60%)
+            `;
+            resultInput.style.backgroundSize = '20px 20px';
+            resultInput.style.animation = 'shimmer 2s infinite';
+            
+            // Create interval to change loading message every second
+            const loadingInterval = setInterval(() => {
+                secondsPassed++;
+                
+                // Cycle through loading messages or repeat from beginning
+                currentIndex = secondsPassed % loadingMessages.length;
+                
+                // Update loading message
+                resultInput.value = loadingMessages[currentIndex] || `🔮 Loading... ${secondsPassed}s`;
+                
+                // Stop when duration is reached
+                if (secondsPassed >= LOADING_DURATION) {
+                    clearInterval(loadingInterval);
+                    showResult();
+                }
+            }, 1000); // Update every 1 second
+            
+            return loadingInterval;
+        }
+
+        // Function to show result
+        function showResult() {
+            const randomResult = getRandomItem(predictionResults);
+            resultInput.value = randomResult;
+            resultInput.style.color = '#90EE90';
+            resultInput.style.background = 'rgba(144, 238, 144, 0.1)';
+            resultInput.style.backgroundImage = 'none';
+            resultInput.style.animation = 'pulse 0.5s ease';
+            
+            // Re-enable submit button
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Predict Now';
+        }
+
+        // Add shimmer animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shimmer {
+                0% { background-position: 0% 0%; }
+                100% { background-position: 100% 100%; }
+            }
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Handle form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = firstInput.value.trim();
+            const age = secondInput.value.trim();
+            
+            // Validation
+            if (!name || !age) {
+                resultInput.value = "⚠️ Please fill in both fields!";
+                resultInput.style.color = '#FF6B6B';
+                resultInput.style.background = 'rgba(255, 107, 107, 0.1)';
+                return;
+            }
+            
+            if (age < 1 || age > 150) {
+                resultInput.value = "⚠️ Please enter a valid age!";
+                resultInput.style.color = '#FF6B6B';
+                resultInput.style.background = 'rgba(255, 107, 107, 0.1)';
+                return;
+            }
+            
+            // Disable button and show loading sequence
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Predicting...';
+            
+            // Start loading sequence
+            showLoadingSequence();
+        });
+
+        // Reset result when inputs change
+        [firstInput, secondInput].forEach(input => {
+            input.addEventListener('input', () => {
+                resultInput.value = '';
+                resultInput.style.color = 'rgba(255, 255, 255, 0.8)';
+                resultInput.style.background = 'rgba(255, 255, 255, 0.15)';
+                resultInput.style.backgroundImage = 'none';
+                resultInput.style.animation = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
